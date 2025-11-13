@@ -1,13 +1,20 @@
 "user server";
 
 import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import { createStreamableValue } from "ai/rsc";
+import { streamText } from "ai";
 
-export async function getAnswer(question) {
-  const text = await generateText({
-    model: openai("gpt-4o"), // "gpt-3.5-turbo"
-    prompt: question,
-  });
-
-  return { text };
+export async function generate(input) {
+  const stream = createStreamableValue("");
+  (async () => {
+    const { textStream } = await streamText({
+      model: openai("gpt-4o"), // "gpt-3.5-turbo"
+      prompt: input,
+    });
+    for await (const delta of textStream) {
+      stream.update(delta);
+    }
+    stream.done();
+  })();
+  return { output: stream.value };
 }
