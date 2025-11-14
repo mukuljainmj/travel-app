@@ -1,20 +1,32 @@
 "user server";
 
 import { openai } from "@ai-sdk/openai";
+import { z } from "zod";
+import { streamObject } from "ai";
 import { createStreamableValue } from "ai/rsc";
-import { streamText } from "ai";
 
 export async function generate(input) {
-  const stream = createStreamableValue("");
+  "use server";
+  const stream = createStreamableValue();
   (async () => {
-    const { textStream } = await streamText({
+    const { partialObjectStream } = await streamObject({
       model: openai("gpt-4o"), // "gpt-3.5-turbo"
+      system: "You generate fake data for thre people",
       prompt: input,
+      schema: z.object({
+        people: z.array(
+          z.object({
+            name: z.string().describe("name of a fake person"),
+            address: z.string().describe("US address format"),
+            age: z.number(),
+          })
+        ),
+      }),
     });
-    for await (const delta of textStream) {
+    for await (const delta of partialObjectStream) {
       stream.update(delta);
     }
     stream.done();
   })();
-  return { output: stream.value };
+  return { object: stream.value };
 }
